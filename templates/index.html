@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Motorcycle Parking Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .video-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-stream {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stats-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-label {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .available-slots .stat-value {
+            background: linear-gradient(45deg, #00b894, #00a085);
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00b894;
+            animation: blink 1.5s infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .info-section {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .info-card h3 {
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .info-card p {
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .controls-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            opacity: 0.8;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-panel {
+                order: -1;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏍️ Smart Motorcycle Parking System</h1>
+        <p>Real-time AI-powered parking slot detection and monitoring</p>
+    </div>
+
+    <div class="container">
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-container">
+                    <img class="video-stream" src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+                </div>
+                <div class="controls-section">
+                    <button class="refresh-btn" onclick="refreshStats()">
+                        🔄 Refresh Stats
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h2 class="stats-title">📊 Live Statistics</h2>
+                
+                <div class="stat-item available-slots">
+                    <span class="stat-label">Available Slots</span>
+                    <span class="stat-value" id="available-slots">-</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-label">Tracked Motors</span>
+                    <span class="stat-value" id="tracked-motors">-</span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-label">
+                        <span class="status-indicator"></span>
+                        System Status
+                    </span>
+                    <span class="stat-value" style="background: linear-gradient(45deg, #00b894, #00a085);">
+                        ONLINE
+                    </span>
+                </div>
+
+                <div class="stat-item">
+                    <span class="stat-label">Last Update</span>
+                    <span class="stat-value" id="last-update" style="background: linear-gradient(45deg, #6c5ce7, #5f3dc4); font-size: 0.9rem;">
+                        --:--:--
+                    </span>
+                </div>
+
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading stats...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2 style="text-align: center; margin-bottom: 20px;">📋 System Information</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>🎯 Detection Method</h3>
+                    <p>YOLO11 AI model for motorcycle detection with real-time tracking system</p>
+                </div>
+                <div class="info-card">
+                    <h3>📏 Slot Calculation</h3>
+                    <p>Each parking slot = 140cm. Slots calculated using floor(distance/140cm) formula</p>
+                </div>
+                <div class="info-card">
+                    <h3>📹 Video Source</h3>
+                    <p>Live webcam feed with real-time processing and visualization</p>
+                </div>
+                <div class="info-card">
+                    <h3>⚡ Performance</h3>
+                    <p>Real-time processing with automatic tracking and slot monitoring</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>🚀 Powered by Flask, OpenCV, and YOLO11 | Real-time Parking Management System</p>
+    </div>
+
+    <script>
+        // Auto-refresh stats every 2 seconds
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('available-slots').textContent = data.available_slots;
+                    document.getElementById('tracked-motors').textContent = data.tracked_motors;
+                    document.getElementById('last-update').textContent = data.last_update;
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                });
+        }
+
+        function refreshStats() {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = 'block';
+            
+            setTimeout(() => {
+                updateStats();
+                loadingEl.style.display = 'none';
+            }, 500);
+        }
+
+        // Start auto-refresh
+        setInterval(updateStats, 2000);
+        
+        // Initial load
+        updateStats();
+
+        // Handle video stream errors
+        document.querySelector('.video-stream').addEventListener('error', function() {
+            this.src = this.src; // Reload the image
+        });
+
+        // Add some interactive effects
+        document.querySelectorAll('.stat-item').forEach(item => {
+            item.addEventListener('click', function() {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = 'translateY(-2px)';
+                }, 150);
+            });
+        });
+
+        // Add notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#00b894' : '#667eea'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Monitor parking changes
+        let lastAvailableSlots = null;
+        let lastTrackedMotors = null;
+
+        function checkForChanges(data) {
+            if (lastAvailableSlots !== null) {
+                if (data.available_slots > lastAvailableSlots) {
+                    showNotification('🎉 Parking slot became available!', 'success');
+                } else if (data.available_slots < lastAvailableSlots) {
+                    showNotification('🚗 Parking slot occupied', 'info');
+                }
+            }
+            
+            if (lastTrackedMotors !== null && data.tracked_motors !== lastTrackedMotors) {
+                const diff = data.tracked_motors - lastTrackedMotors;
+                if (diff > 0) {
+                    showNotification(`🏍️ ${diff} new motorcycle(s) detected`, 'info');
+                }
+            }
+
+            lastAvailableSlots = data.available_slots;
+            lastTrackedMotors = data.tracked_motors;
+        }
+
+        // Enhanced stats update function
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('available-slots').textContent = data.available_slots;
+                    document.getElementById('tracked-motors').textContent = data.tracked_motors;
+                    document.getElementById('last-update').textContent = data.last_update;
+                    
+                    checkForChanges(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                    showNotification('⚠️ Connection error', 'error');
+                });
+        }
+
+        // Add CSS for slide-in animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
